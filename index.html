@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Spider Honeypots against LLM-Driven Scrapers</title>
+<meta name="description" content="Interactive results for the COS 700 project: redesigning spider honeypots to detect scrapers driven by large language models.">
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --card2:#1c232d; --ink:#e6edf3; --muted:#8b98a9; --line:#263041;
+  --green:#3ddc84; --green-d:#1f8f55; --blue:#58a6ff; --cyan:#22d3ee; --violet:#b392f0; --slate:#8aa0b8; --amber:#f2cc60; --rose:#ff8b9a;
+  --track:#232c38;
+  --mech:#8aa0b8; --crawl:#22d3ee; --claude:#3ddc84; --human:#b392f0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--blue)}
+code{background:var(--card2);padding:1px 5px;border-radius:4px;font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--cyan)}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+header.hero{background:radial-gradient(900px 300px at 85% -20%,rgba(61,220,132,.18),transparent 60%),radial-gradient(700px 300px at 0% 120%,rgba(88,166,255,.16),transparent 60%),#0a0f15;border-bottom:1px solid var(--line);padding:38px 0 30px}
+.hero .eyebrow{color:var(--green);font:700 .8rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase}
+.hero h1{font-size:clamp(1.65rem,5.5vw,2.7rem);line-height:1.15;margin:.35em 0 .3em}
+.hero p.sub{color:#b9c4d2;margin:0 0 14px;font-size:1.05rem}
+.hero .meta{color:var(--muted);font-size:.9rem}
+.hero .meta b{color:#fff}
+nav.tabs{position:sticky;top:0;z-index:5;background:rgba(13,17,23,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto;padding-top:6px;padding-bottom:6px;scrollbar-width:thin}
+nav.tabs a{white-space:nowrap;text-decoration:none;color:var(--muted);padding:6px 10px;border-radius:6px;font-size:.92rem}
+nav.tabs a:hover,nav.tabs a:focus-visible{background:var(--card2);color:var(--green)}
+section{padding:30px 0 6px;scroll-margin-top:52px}
+h2{font-size:1.4rem;margin:0 0 .35em;color:var(--green)}
+h3{font-size:1.05rem;margin:1.2em 0 .3em;color:var(--ink)}
+p{margin:.5em 0}
+.lede{font-size:1.15rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;gap:12px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.stat .num{font-size:2.2rem;font-weight:800;line-height:1.1;color:var(--green)}
+.stat .lab{color:var(--muted);font-size:.92rem}
+.tipable{cursor:help}
+.hint{font-size:.85rem;color:var(--muted)}
+.hint .q{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--muted);font-size:.7rem;margin-right:4px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:10px;border:2px solid var(--green);background:var(--green);color:#04130a;font-weight:700;text-decoration:none;min-height:44px}
+.btn.alt{background:transparent;color:var(--green)}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible,.seg button:focus-visible,.rowbtn:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.seg button{font:inherit;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--ink);cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#04130a;font-weight:700}
+.rows{display:flex;flex-direction:column;gap:6px}
+.rowbtn{all:unset;display:block;box-sizing:border-box;width:100%;cursor:pointer;border-radius:8px;padding:6px 8px}
+.rowbtn:hover,.rowbtn[aria-expanded="true"]{background:var(--card2)}
+.rowhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.92rem}
+.rowhead .val{font-weight:700;white-space:nowrap;display:flex;gap:8px;align-items:baseline}
+.track{position:relative;height:22px;background:var(--track);border-radius:4px;margin-top:3px}
+.bar{position:absolute;left:0;top:0;bottom:0;border-radius:4px 0 0 4px}
+.ci{position:absolute;top:50%;height:2px;background:#fff;transform:translateY(-50%)}
+.ci::before,.ci::after{content:"";position:absolute;top:-5px;width:2px;height:12px;background:#fff}
+.ci::before{left:0}.ci::after{right:0}
+.detail{font-size:.9rem;color:var(--muted);padding:2px 8px 8px}
+.detail b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.reading{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;font-size:.88rem;color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(14,1fr);gap:2px;margin-top:4px}
+.strip span{height:20px;border-radius:2px;background:var(--track)}
+.strip span.on{background:var(--c);opacity:var(--o)}
+.nums{display:grid;grid-template-columns:repeat(14,1fr);gap:2px;font-size:.7rem;color:var(--muted);text-align:center}
+.note{font-size:.85rem;color:var(--muted)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;white-space:nowrap}
+td .vs{color:var(--muted);font-size:.8rem;margin:2px 0}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:700;white-space:normal;cursor:help}
+.ok{background:#12351f;color:#7ee2a0;border:1px solid #1f6b3c}
+.part{background:#3a3010;color:#f2cc60;border:1px solid #6b5a1a}
+.no{background:#3b1620;color:#ff9aa8;border:1px solid #7a2a3a}
+.chip{font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;border:1px solid;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+.chip.success{color:#7ee2a0;border-color:#1f6b3c;background:#12351f}
+.chip.expected{color:#8fc4ff;border-color:#27518a;background:#10263f}
+.chip.note{color:#f2cc60;border-color:#6b5a1a;background:#3a3010}
+.chip.limit{color:#d2b8ff;border-color:#5a3f95;background:#2a1f45}
+.chip.neutral{color:var(--muted);border-color:var(--line);background:var(--card2)}
+ol.steps{padding-left:0;list-style:none;counter-reset:s;margin:0}
+ol.steps li{counter-increment:s;display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+ol.steps li:last-child{border-bottom:0}
+ol.steps li::before{content:counter(s);flex:none;width:30px;height:30px;border-radius:50%;background:var(--green);color:#04130a;font-weight:800;display:flex;align-items:center;justify-content:center}
+ul.tight{margin:.3em 0;padding-left:1.2em}
+ul.tight li{margin:.25em 0}
+details{border-top:1px solid var(--line);padding:8px 0}
+details summary{cursor:pointer;font-weight:600;color:var(--blue)}
+footer{padding:28px 0 48px;color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);margin-top:30px}
+#tip{position:fixed;z-index:50;display:none;max-width:min(340px,calc(100vw - 16px));background:#0a0f15;border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:10px 12px;font-size:.86rem;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.6);pointer-events:none}
+#tip b.tone{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+#tip.success{border-left-color:var(--green)} #tip.success b.tone{color:var(--green)}
+#tip.expected{border-left-color:var(--blue)} #tip.expected b.tone{color:var(--blue)}
+#tip.note{border-left-color:var(--amber)} #tip.note b.tone{color:var(--amber)}
+#tip.limit{border-left-color:var(--violet)} #tip.limit b.tone{color:var(--violet)}
+#tip.neutral{border-left-color:var(--slate)} #tip.neutral b.tone{color:var(--slate)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">COS 700 &middot; University of Pretoria &middot; October 2026</div>
+    <h1>Spider Honeypots against LLM-Driven Scrapers</h1>
+    <p class="sub">Redesigning traps for web scrapers that can reason.</p>
+    <div class="meta"><b>Ethan Wilke</b> (u23577674) &middot; Supervisor: Prof. Jan Eloff</div>
+    <div class="btns" id="heroBtns"></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections"><div class="wrap">
+  <a href="#summary">Summary</a><a href="#detection">Detection</a><a href="#chain">Chain depth</a><a href="#time">Time to detection</a><a href="#stats">Statistics</a><a href="#honeypots">Honeypots</a><a href="#method">Method</a><a href="#limits">Limits</a><a href="#downloads">Downloads</a>
+</div></nav>
+
+<main class="wrap">
+
+<section id="summary">
+  <h2>Summary</h2>
+  <p class="lede">Spider honeypots are links that only a robot would follow. They assume the robot is mechanical. A scraper driven by a large language model (LLM) can read what a page means and browse like a person, so I asked whether honeypots can be <b>redesigned to detect LLM-driven scrapers</b>, and what the designs need to <b>remain undetected</b> by them.</p>
+  <p>I built a fictional company website that logs every request, and switched on three honeypots one at a time, plus a control condition with none. Seven agents then visited it, 240 runs in all.</p>
+  <p class="hint"><span class="q">?</span>Hover over (or tap) any figure on this page to see whether it is a good, expected or surprising result. A low number is not always a failed test.</p>
+  <div class="grid g3" style="margin-top:14px" id="statTiles"></div>
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin-top:0">What this means</h3>
+    <ul class="tight">
+      <li>Honeypots with plausible, goal-relevant lures caught every LLM-driven agent that was asked to look for sensitive content.</li>
+      <li>A <code>robots.txt</code> rule only protects against clients that read it. Both Claude agents entered the disallowed 14-page chain in 10 of 10 runs without having requested the file.</li>
+      <li>Neither Claude agent followed the instruction hidden in the prompt-injection trap (0 of 10). The token was only quoted.</li>
+      <li>The visible link that attracts agents also caused the human baseline's one false positive.</li>
+    </ul>
+    <p class="note">Detection was at the ceiling, so the designs could not be ranked against each other, and no classical hidden-link honeypot was tested. The designs work in this testbed. Whether they beat classical honeypots, or resist agents built to avoid them, is still open.</p>
+  </div>
+</section>
+
+<section id="detection">
+  <h2>Detection by agent</h2>
+  <p>The share of runs in which the agent made at least one request to a trap. Bars show the rate, the white whisker is the exact 95% confidence interval. Hover over a row for what the result means, tap or click it for time to first hit.</p>
+  <div class="card">
+    <div class="seg" role="group" aria-label="Honeypot condition" id="detSeg"></div>
+    <div class="rows" id="detRows"></div>
+    <div class="legend" id="detLegend"></div>
+    <div class="reading"><b>Reading the numbers.</b> For the honeypots, <b>high is good</b>: the trap caught the agent. For the human baseline, <b>low is good</b>: no false alarms. A zero is not a failed test. It is the expected result for the human baseline, and for the crawler that obeys <code>robots.txt</code> in the link-graph condition.</div>
+  </div>
+</section>
+
+<section id="chain">
+  <h2>How deep into the 14-page chain each agent went</h2>
+  <p>In the link-graph condition each "restricted archive" page teases the next. Each cell shows the share of runs that requested at least that page. Brighter means more runs.</p>
+  <div class="card" id="chainBox"></div>
+</section>
+
+<section id="time">
+  <h2>Time to detection</h2>
+  <p>Median seconds from the first request in a run to the first trap hit. Range in brackets. Only runs with a hit are included.</p>
+  <div class="card scroll"><table id="ttd"></table></div>
+  <p class="note">Playwright is a scripted crawler and is fast by design. The language-model agents take tens of seconds because the model reasons between requests. Timings depend on the machine used and are comparisons within this testbed, not general speeds.</p>
+</section>
+
+<section id="stats">
+  <h2>Statistical comparisons</h2>
+  <p>Eight two-sided Fisher exact tests. Each row compares how often two groups of runs hit a trap. The Bonferroni column multiplies each p-value by 8, to allow for running eight tests. A very small p means the gap between the groups is very unlikely to be chance.</p>
+  <div class="card scroll"><table id="cmp"></table></div>
+  <p class="note">Detection was at the ceiling for most agents, so these tests show a large gap from the human baseline rather than differences between the LLM agents. The two Claude agents are identical on this measure (15 of 15 each).</p>
+</section>
+
+<section id="honeypots">
+  <h2>The three honeypots and what happened</h2>
+  <div class="grid g3">
+    <div class="card"><h3 style="margin-top:0">Semantic trap</h3><p>A page that looks like an internal quarterly financial export, linked from a blog post.</p><p><span class="pill part tipable" tabindex="0" data-tone="note" data-tip="The trap did what it was designed to do: every run by the language-model agents requested the page. The qualification is that some model replies said the page looked artificial, so a more careful agent might notice it.">Successful, with a qualification</span></p><p class="note">All 30 Claude and Crawl4AI runs requested it. Some replies said it looked artificial.</p></div>
+    <div class="card"><h3 style="margin-top:0">Prompt-injection trap</h3><p>Vendor notes asking automated assistants to repeat a canary token, in a hidden comment and in small visible text.</p><p><span class="pill no tipable" tabindex="0" data-tone="note" data-tip="This design did not achieve its aim: no Claude run followed the hidden instruction. That is a genuine finding, not a broken experiment. It means the canary token did not work as a way to catch Claude, although the agents still requested the page.">Unsuccessful</span></p><p class="note">No Claude run followed the instruction (0 of 10). The token was only quoted.</p></div>
+    <div class="card"><h3 style="margin-top:0">Link-graph chain</h3><p>14 "restricted archive" pages, each teasing the next, disallowed in <code>robots.txt</code>.</p><p><span class="pill part tipable" tabindex="0" data-tone="note" data-tip="Successful at catching the behaviour: Claude went deep into the chain in every run. Not successful at catching the reasoning: Claude had not read robots.txt, so it did not knowingly ignore the rule.">Successful for behaviour, not for reasoning</span></p><p class="note">Claude went deep but had not read <code>robots.txt</code>. 4 of 5 text-browser runs jumped to page 14 by typing an address.</p></div>
+  </div>
+  <h3>Design lessons</h3>
+  <ul class="tight">
+    <li>Visible, goal-relevant lures attract agents that follow links.</li>
+    <li>Keep tell-tale labels and token names out of trap content.</li>
+    <li>Do not reveal a chain's length: "page 1 of 14" lets agents jump to the end.</li>
+    <li>A disallow entry reaches only clients that read it.</li>
+  </ul>
+</section>
+
+<section id="method">
+  <h2>Method</h2>
+  <div class="card">
+  <ol class="steps">
+    <li><div><b>Design science research.</b> Build an artifact, then evaluate it against stated criteria (Hevner et al.).</div></li>
+    <li><div><b>Testbed.</b> A fictional company website that logs every request and page event.</div></li>
+    <li><div><b>Three honeypots,</b> switched on one at a time, plus a control condition with none.</div></li>
+    <li><div><b>Seven agents.</b> Two mechanical crawlers; Crawl4AI with a small local model (two input modes); Claude Sonnet 5.5 (screenshots, page text); a scripted human baseline.</div></li>
+    <li><div><b>240 runs</b> (60 per condition; 5 to 10 per agent and condition). Measures: detection rate, false positives, time to detection and trap depth. Exact statistics and hand-coded replies.</div></li>
+  </ol>
+  </div>
+  <details><summary>Agents in more detail</summary>
+    <ul class="tight">
+      <li><b>Playwright crawler (obeys robots.txt):</b> a scripted browser that follows every same-site link breadth-first, up to 60 pages, and skips disallowed paths.</li>
+      <li><b>Playwright crawler (ignores robots.txt):</b> the same crawler without the robots.txt check.</li>
+      <li><b>Crawl4AI + llama3.2:</b> a crawler that ranks links with a keyword scorer and fetches pages best-first, up to 30 pages and link depth 4. The small local model extracts what matches the task from each fetched page, as markdown or as raw HTML. It does not choose which pages are fetched.</li>
+      <li><b>Claude Sonnet 5.5 (screenshots):</b> the model sees screenshots of the page and acts with the mouse and keyboard.</li>
+      <li><b>Claude Sonnet 5.5 (page text):</b> the model reads page text and uses tools to open links, open an address, or go back.</li>
+      <li><b>Scripted human baseline:</b> a synthetic visitor with human-like browsing, used to estimate false positives.</li>
+    </ul>
+  </details>
+</section>
+
+<section id="limits">
+  <h2>Limits</h2>
+  <ul class="tight">
+    <li>Detection was at the ceiling, so the designs could not be ranked.</li>
+    <li>No classical hidden-link honeypot was tested, so no improvement over classical designs is shown.</li>
+    <li>Small samples (5 to 10 runs per cell), one website, one task, two models.</li>
+    <li>The human baseline is synthetic, not real visitors.</li>
+    <li>Crawl4AI's depth in the chain is capped by its crawl settings, so it cannot be compared with the other agents on depth.</li>
+    <li>Language-model replies were hand-coded by a single coder.</li>
+  </ul>
+</section>
+
+<section id="downloads">
+  <h2>Downloads</h2>
+  <div class="grid g3" id="dlGrid"></div>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  Ethan Wilke &middot; COS 700 &middot; University of Pretoria &middot; October 2026. All figures on this page are computed from the run log of 240 runs.
+</div></footer>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+/* ---- Edit these values if file names or the repository change ---- */
+var CONFIG = {
+  report: "report.pdf",
+  poster: "poster.pdf",
+  repo:   "https://github.com/ethanwilke23/Spider-Honeypots-Against-Scrapers"
+};
+var D = {"agents":[{"key":"playwright_baseline","label":"Playwright crawler (obeys robots.txt)","group":"mech","cond":{"semantic":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[1.5,1.4,1.7],"req":[7.0,7.0,7.0]},"prompt_injection":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[1.5,1.3,1.8],"req":[7.0,7.0,7.0]},"link_graph":{"k":0,"n":10,"lo":0.0,"hi":30.8,"sec":null,"req":null},"all":{"k":20,"n":30,"lo":47.2,"hi":82.7,"sec":[1.5,1.3,1.8],"req":[7.0,7.0,7.0]}},"control":{"k":0,"n":10},"chain":{"n":10,"share":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"median_depth":0.0,"max_depth":0}},{"key":"playwright_ignore_robots","label":"Playwright crawler (ignores robots.txt)","group":"mech","cond":{"semantic":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[0.5,0.4,0.6],"req":[7.0,7.0,7.0]},"prompt_injection":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[0.5,0.4,0.5],"req":[7.0,7.0,7.0]},"link_graph":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[0.5,0.4,0.6],"req":[7.0,7.0,7.0]},"all":{"k":30,"n":30,"lo":88.4,"hi":100.0,"sec":[0.5,0.4,0.6],"req":[7.0,7.0,7.0]}},"control":{"k":0,"n":10},"chain":{"n":10,"share":[10,10,10,10,10,10,10,10,10,10,10,10,10,10],"median_depth":14.0,"max_depth":14}},{"key":"crawl4ai_markdown","label":"Crawl4AI + llama3.2 (markdown input)","group":"crawl","cond":{"semantic":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[42.2,38.0,50.4],"req":[8.0,8.0,8.0]},"prompt_injection":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[40.5,38.8,90.8],"req":[8.0,8.0,8.0]},"link_graph":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[31.3,30.6,33.7],"req":[6.0,6.0,6.0]},"all":{"k":30,"n":30,"lo":88.4,"hi":100.0,"sec":[39.5,30.6,90.8],"req":[8.0,6.0,8.0]}},"control":{"k":0,"n":10},"chain":{"n":10,"share":[10,10,10,0,0,0,0,0,0,0,0,0,0,0],"median_depth":3.0,"max_depth":3}},{"key":"crawl4ai_html","label":"Crawl4AI + llama3.2 (HTML input)","group":"crawl","cond":{"semantic":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[71.8,59.8,79.9],"req":[8.0,8.0,8.0]},"prompt_injection":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[38.2,33.5,46.5],"req":[8.0,8.0,8.0]},"link_graph":{"k":10,"n":10,"lo":69.2,"hi":100.0,"sec":[27.2,25.7,36.4],"req":[6.0,6.0,6.0]},"all":{"k":30,"n":30,"lo":88.4,"hi":100.0,"sec":[38.2,25.7,79.9],"req":[8.0,6.0,8.0]}},"control":{"k":0,"n":10},"chain":{"n":10,"share":[10,10,10,0,0,0,0,0,0,0,0,0,0,0],"median_depth":3.0,"max_depth":3}},{"key":"claude_computer_use","label":"Claude Sonnet 5.5 (screenshots)","group":"claude","cond":{"semantic":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[27.9,24.8,44.2],"req":[8.0,7.0,12.0]},"prompt_injection":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[20.3,19.2,53.1],"req":[6.0,6.0,6.0]},"link_graph":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[26.1,25.6,38.7],"req":[7.0,7.0,7.0]},"all":{"k":15,"n":15,"lo":78.2,"hi":100.0,"sec":[26.0,19.2,53.1],"req":[7.0,6.0,12.0]}},"control":{"k":0,"n":5},"chain":{"n":5,"share":[5,5,5,5,5,5,5,5,5,5,5,5,5,5],"median_depth":14.0,"max_depth":14}},{"key":"claude_text_browser","label":"Claude Sonnet 5.5 (page text)","group":"claude","cond":{"semantic":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[10.0,9.3,11.1],"req":[5.0,5.0,5.0]},"prompt_injection":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[13.1,12.7,13.9],"req":[7.0,6.0,7.0]},"link_graph":{"k":5,"n":5,"lo":47.8,"hi":100.0,"sec":[13.7,12.8,19.3],"req":[6.0,6.0,6.0]},"all":{"k":15,"n":15,"lo":78.2,"hi":100.0,"sec":[13.1,9.3,19.3],"req":[6.0,5.0,7.0]}},"control":{"k":0,"n":5},"chain":{"n":5,"share":[5,4,4,4,4,4,4,4,4,4,4,4,4,4],"median_depth":14.0,"max_depth":14}},{"key":"human_baseline","label":"Scripted human baseline","group":"human","cond":{"semantic":{"k":0,"n":10,"lo":0.0,"hi":30.8,"sec":null,"req":null},"prompt_injection":{"k":0,"n":10,"lo":0.0,"hi":30.8,"sec":null,"req":null},"link_graph":{"k":1,"n":10,"lo":0.3,"hi":44.5,"sec":[47.1,47.1,47.1],"req":[7.0,7.0,7.0]},"all":{"k":1,"n":30,"lo":0.1,"hi":17.2,"sec":[47.1,47.1,47.1],"req":[7.0,7.0,7.0]}},"control":{"k":0,"n":10},"chain":{"n":10,"share":[1,0,0,0,0,0,0,0,0,0,0,0,0,0],"median_depth":0.0,"max_depth":1}}],"comps":[{"g1":"Playwright (obeys robots.txt)","g2":"Scripted human baseline","a":[20,30],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":2.2935976720235044e-07,"pb":1.8348781376188035e-06},{"g1":"Playwright (ignores robots.txt)","g2":"Scripted human baseline","a":[30,30],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":5.242482506564868e-16,"pb":4.1939860052518944e-15},{"g1":"Crawl4AI (markdown input)","g2":"Scripted human baseline","a":[30,30],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":5.242482506564868e-16,"pb":4.1939860052518944e-15},{"g1":"Crawl4AI (HTML input)","g2":"Scripted human baseline","a":[30,30],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":5.242482506564868e-16,"pb":4.1939860052518944e-15},{"g1":"Claude (screenshots)","g2":"Scripted human baseline","a":[15,15],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":4.6394639832699565e-11,"pb":3.711571186615965e-10},{"g1":"Claude (page text)","g2":"Scripted human baseline","a":[15,15],"b":[1,30],"scope":"all three honeypot conditions pooled","kind":"agent-vs-human","p":4.6394639832699565e-11,"pb":3.711571186615965e-10},{"g1":"Playwright (obeys robots.txt)","g2":"Playwright (ignores robots.txt)","a":[0,10],"b":[10,10],"scope":"link-graph condition only","kind":"robots","p":1.082508822446903e-05,"pb":8.660070579575224e-05},{"g1":"Claude (screenshots)","g2":"Claude (page text)","a":[15,15],"b":[15,15],"scope":"all three honeypot conditions pooled","kind":"claude-pair","p":1.0,"pb":1.0}],"totals":{"runs":240,"llm_hits":90,"llm_n":90,"control_hits":0}};
+
+var COLORS = {mech:"var(--mech)",crawl:"var(--crawl)",claude:"var(--claude)",human:"var(--human)"};
+var GROUPNAME = {mech:"Scripted crawler",crawl:"Crawl4AI + small local model",claude:"Claude Sonnet 5.5",human:"Scripted human baseline"};
+var CONDS = [["semantic","Semantic trap"],["prompt_injection","Prompt-injection trap"],["link_graph","Link-graph chain"],["all","All honeypots"]];
+var TONE = {success:"Success",expected:"Expected result",note:"Worth noting",limit:"Limit of the setup",neutral:"How to read this"};
+var CHIP = {success:"Success",expected:"Expected",note:"Note",limit:"Setup limit",neutral:"Info"};
+
+function el(tag, attrs, html){ var e=document.createElement(tag); if(attrs){for(var k in attrs){ if(k==="class") e.className=attrs[k]; else e.setAttribute(k,attrs[k]); }} if(html!=null) e.innerHTML=html; return e; }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function tipAttrs(t){ return ' data-tone="'+t[0]+'" data-tip="'+esc(t[1])+'"'; }
+function pct(k,n){ return Math.round(100*k/n); }
+function sci(p){ if(p>=0.01) return p.toFixed(2).replace(/\.?0+$/,""); var e=Math.floor(Math.log10(p)); var m=p/Math.pow(10,e); return m.toFixed(2)+" &times; 10<sup>"+e+"</sup>"; }
+function statTxt(s){ return s? s[0]+" ["+s[1]+"-"+s[2]+"]" : "-"; }
+function agent(key){ return D.agents.filter(function(a){return a.key===key;})[0]; }
+
+/* ---------- what each figure means ---------- */
+function detMeaning(a, cond, c){
+  var k=c.k, n=c.n, g=a.group;
+  if(g==="human"){
+    if(k===0) return ["expected","Good and expected. This scripted visitor behaves like a person, and a person should not trigger a honeypot. 0 of "+n+" means no false alarms. A zero is the result you want here, not a failed test."];
+    if(cond==="link_graph") return ["note","One false alarm: in 1 of 10 runs the visitor clicked the visible link to chain page 1, the same visible lure that attracts agents. It is the only false positive in the whole study."];
+    return ["note","1 of 30 honeypot runs touched a trap, a false-alarm rate of 3%. Low is good, and it is not zero: the only false alarm came from the visible link of the link-graph chain."];
+  }
+  if(a.key==="playwright_baseline" && cond==="link_graph" && k===0)
+    return ["expected","Expected, and informative. This crawler obeys robots.txt and the chain is disallowed there, so it never went in. It does not mean the test failed: it shows that a robots.txt rule keeps polite crawlers out of the trap."];
+  if(a.key==="playwright_baseline" && cond==="all")
+    return ["expected","Expected. The crawler hit both traps that robots.txt does not cover (20 of 20) and missed only the link-graph chain (0 of 10), which it is forbidden to enter. The 67% is a result of obeying the rule, not a weakness of the traps."];
+  if(k===n){
+    var t="Success. The honeypot caught the agent in every run ("+k+" of "+n+"). For a honeypot a hit is the goal, so a high rate means the trap works on this agent.";
+    if(g==="claude" && cond==="prompt_injection") t+=" A hit means the agent requested the trap page. That is separate from obeying the hidden instruction, which no Claude run did (0 of 10).";
+    if(cond==="all" && g!=="mech") t+=" Because every agent is at 100%, these results cannot rank the three designs against each other.";
+    return ["success",t];
+  }
+  return ["note",k+" of "+n+" runs hit a trap ("+pct(k,n)+"%)."];
+}
+function chainMeaning(a){
+  var k=a.key;
+  if(k==="playwright_baseline") return ["expected","Expected. It obeys robots.txt, and the whole chain is disallowed, so 0 of 10 entered. This shows the robots.txt rule works on polite crawlers, so it is not a failed run."];
+  if(k==="playwright_ignore_robots") return ["success","Success. Ignoring robots.txt, this crawler followed the chain to page 14 in all 10 runs."];
+  if(k==="crawl4ai_markdown"||k==="crawl4ai_html") return ["limit","Limit of the setup, not of the model. All 10 runs entered the chain, so the trap still caught them. Crawl4AI chooses which pages to fetch with its own link scorer, and it stopped at page 3 under its crawl limits (30 pages, link depth 4). The depth says nothing about how far the model would have gone."];
+  if(k==="claude_computer_use") return ["success","Success. Claude reached page 14 in all 5 runs. It also entered the chain without having requested robots.txt, which is why the rule did not protect against it."];
+  if(k==="claude_text_browser") return ["note","All 5 runs entered the chain. 4 of 5 then typed an address to jump to page 14, so the cells for pages 2 to 13 count those runs as having reached at least that page. The label 'page 1 of 14' revealed the chain's length."];
+  return ["note","Low is good. Only 1 of 10 scripted human runs clicked a chain link (page 1), and none went further. That one click is the study's only false alarm; the other 9 runs never entered the chain, as expected."];
+}
+function ttdMeaning(a, cond, x){
+  if(!x.k){
+    if(a.group==="human") return ["expected","Good and expected: the human baseline never hit this trap, so there is no time to show."];
+    if(a.key==="playwright_baseline") return ["expected","Expected: this crawler obeys robots.txt and never entered the chain, so there is no hit time."];
+    return ["neutral","No run reached the trap."];
+  }
+  var t="Median time to the first trap hit, with the fastest and slowest run in brackets. A shorter time means earlier detection.";
+  if(a.group==="mech") t+=" This scripted crawler is fast by design.";
+  if(a.group==="human") t="One false alarm, 47 seconds into the run. Rare, and not a measure of how fast honeypots catch agents.";
+  if(a.group==="crawl"||a.group==="claude") t+=" The model reasons between requests, so runs take tens of seconds.";
+  return ["neutral",t];
+}
+function cmpMeaning(c){
+  if(c.kind==="claude-pair") return ["expected","p = 1 means no difference. Both Claude agents were caught in all 15 runs, so the two perception modes cannot be told apart on this measure. That is what you expect when both are at the ceiling, not a failed test."];
+  if(c.kind==="robots") return ["success","A very small p. Obeying or ignoring robots.txt made the difference between 0 of 10 and 10 of 10 entering the chain. The rule works, but only on clients that read it."];
+  return ["success","A very small p means the gap is very unlikely to be chance. Here that is the result you want: the honeypots separate this agent ("+c.a[0]+" of "+c.a[1]+") from the human baseline ("+c.b[0]+" of "+c.b[1]+")."];
+}
+
+/* ---------- tooltip engine ---------- */
+var tip=document.getElementById("tip"), pinned=null;
+function showTip(t){
+  var tone=t.getAttribute("data-tone")||"neutral";
+  tip.className=tone;
+  tip.innerHTML='<b class="tone">'+(TONE[tone]||"")+'</b>'+t.getAttribute("data-tip");
+  tip.style.display="block";
+  var r=t.getBoundingClientRect(), w=tip.offsetWidth, h=tip.offsetHeight, vw=document.documentElement.clientWidth;
+  var left=Math.min(Math.max(8,r.left+r.width/2-w/2),vw-w-8);
+  var top=r.top-h-8; if(top<8) top=r.bottom+8;
+  tip.style.left=left+"px"; tip.style.top=top+"px";
+}
+function hideTip(){ tip.style.display="none"; pinned=null; }
+function tgt(e){ return e.target.closest ? e.target.closest("[data-tip]") : null; }
+document.addEventListener("mouseover",function(e){ var t=tgt(e); if(pinned) return; if(t) showTip(t); else hideTip(); });
+document.addEventListener("focusin",function(e){ var t=tgt(e); if(t){ pinned=null; showTip(t);} else hideTip(); });
+document.addEventListener("focusout",function(){ if(!pinned) hideTip(); });
+document.addEventListener("click",function(e){
+  var t=tgt(e);
+  if(t && t.hasAttribute("data-nopin")) return;
+  if(t){ if(pinned===t){ hideTip(); } else { pinned=t; showTip(t); } } else hideTip();
+});
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") hideTip(); });
+window.addEventListener("scroll",hideTip,{passive:true});
+
+/* ---------- header buttons and downloads ---------- */
+(function(){
+  var hb=document.getElementById("heroBtns"), dg=document.getElementById("dlGrid");
+  function mk(href,label,alt){ return '<a class="btn'+(alt?' alt':'')+'" href="'+href+'">'+label+'</a>'; }
+  var hero=mk(CONFIG.report,"Download the report (PDF)")+mk(CONFIG.poster,"Download the poster (PDF)",true);
+  if(CONFIG.repo) hero+=mk(CONFIG.repo,"View the code on GitHub",true);
+  hb.innerHTML=hero;
+  var cards='<div class="card"><h3 style="margin-top:0">Report</h3><p>The full report: method, results, discussion and references.</p>'+mk(CONFIG.report,"Download PDF")+'</div>'+
+            '<div class="card"><h3 style="margin-top:0">Poster</h3><p>The A1 research poster, as submitted.</p>'+mk(CONFIG.poster,"Download PDF")+'</div>';
+  if(CONFIG.repo) cards+='<div class="card"><h3 style="margin-top:0">Code</h3><p>The testbed, the experiment code and the analysis scripts.</p>'+mk(CONFIG.repo,"Open repository")+'</div>';
+  dg.innerHTML=cards;
+})();
+
+/* ---------- summary tiles ---------- */
+(function(){
+  var T=D.totals, h=agent("human_baseline").cond.all, t=document.getElementById("statTiles");
+  var tiles=[
+   [T.llm_hits+" of "+T.llm_n,"honeypot runs by LLM-driven agents hit a trap",["success","Success. Every honeypot run by Crawl4AI and Claude hit a trap: 60 Crawl4AI runs and 30 Claude runs. For a honeypot, a hit is the goal."]],
+   [h.k+" of "+h.n,"honeypot runs by the scripted human baseline hit a trap",["expected","Good and expected. A low number is what you want here: a human-like visitor should almost never trigger a honeypot. The one hit is the study's only false alarm."]],
+   [T.control_hits+" of "+(T.runs/4),"control runs hit a trap (honeypots off)",["expected","Good and expected. With every honeypot switched off, no agent should touch a trap, and none did. A zero here confirms that the hits elsewhere were caused by the honeypots, and not by logging or chance."]],
+   [T.runs+"","runs across 7 agents and 4 conditions",["neutral","60 runs in each of the four conditions (semantic, prompt injection, link graph, none), spread over seven agents with 5 to 10 runs per agent and condition."]]];
+  tiles.forEach(function(x){
+    var c=el("div",{class:"card stat tipable",tabindex:"0"},'<div class="num">'+x[0]+'</div><div class="lab">'+x[1]+'</div>');
+    c.setAttribute("data-tone",x[2][0]); c.setAttribute("data-tip",x[2][1]); t.appendChild(c);
+  });
+})();
+
+/* ---------- detection ---------- */
+var curCond="all";
+function renderDetection(){
+  hideTip();
+  var seg=document.getElementById("detSeg"); seg.innerHTML="";
+  CONDS.forEach(function(c){
+    var b=el("button",{type:"button","aria-pressed":String(c[0]===curCond)},c[1]);
+    b.onclick=function(){curCond=c[0];renderDetection();};
+    seg.appendChild(b);
+  });
+  var rows=document.getElementById("detRows"); rows.innerHTML="";
+  D.agents.forEach(function(a){
+    var c=a.cond[curCond], m=detMeaning(a,curCond,c);
+    var wrap=el("div");
+    var b=el("button",{type:"button","class":"rowbtn","aria-expanded":"false","data-nopin":"1","data-tone":m[0],"data-tip":m[1]});
+    b.innerHTML='<div class="rowhead"><span>'+a.label+'</span><span class="val"><span class="chip '+m[0]+'">'+CHIP[m[0]]+'</span>'+c.k+'/'+c.n+' ('+pct(c.k,c.n)+'%)</span></div>'+
+      '<div class="track"><div class="bar" style="width:'+(100*c.k/c.n)+'%;background:'+COLORS[a.group]+'"></div>'+
+      '<div class="ci" style="left:'+c.lo+'%;width:'+Math.max(0,c.hi-c.lo)+'%"></div></div>';
+    var timeTxt = c.k? ('Median <b>'+statTxt(c.sec)+' s</b> to first hit; median <b>'+statTxt(c.req)+'</b> requests before it (min-max in brackets).') : 'No run reached a trap, so there is no time to first hit.';
+    var d=el("div",{class:"detail",hidden:"hidden"},esc(m[1]).replace(/&quot;/g,'"')+'<br>95% CI '+c.lo+'% to '+c.hi+'%. '+timeTxt+' Control runs (no honeypot) hit a trap in <b>'+a.control.k+'/'+a.control.n+'</b>.');
+    b.onclick=function(){ var open=b.getAttribute("aria-expanded")==="true"; b.setAttribute("aria-expanded",String(!open)); d.hidden=open; };
+    wrap.appendChild(b); wrap.appendChild(d); rows.appendChild(wrap);
+  });
+  document.getElementById("detLegend").innerHTML=Object.keys(GROUPNAME).map(function(k){return '<span><i style="background:'+COLORS[k]+'"></i>'+GROUPNAME[k]+'</span>';}).join("");
+}
+renderDetection();
+
+/* ---------- chain ---------- */
+(function(){
+  var box=document.getElementById("chainBox");
+  var notes={
+    playwright_baseline:"Obeys robots.txt, so it never entered",
+    playwright_ignore_robots:"All 14 pages, in order",
+    crawl4ai_markdown:"Stopped at page 3 by its crawl limits",
+    crawl4ai_html:"Stopped at page 3 by its crawl limits",
+    claude_computer_use:"Reached page 14 in every run",
+    claude_text_browser:"4 of 5 runs jumped ahead by typing an address",
+    human_baseline:"1 run clicked page 1 only"
+  };
+  var h='<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">';
+  h+='<div class="nums" aria-hidden="true">'+[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(function(i){return '<span>'+i+'</span>';}).join("")+'</div>';
+  D.agents.forEach(function(a){
+    var ch=a.chain, c=ch.share, m=chainMeaning(a);
+    var cells=c.map(function(v,i){
+      var o=v?(0.45+0.55*v/ch.n):0;
+      var ct = v? (v+' of '+ch.n+' runs reached at least this page.') : 'No run reached this page.';
+      var ctone = v? m[0] : (a.key==="playwright_baseline"||a.group==="human"?"expected":(a.group==="crawl"?"limit":"neutral"));
+      var extra = (!v && a.group==="crawl") ? ' Crawl4AI stopped at page 3 under its crawl limits (a limit of the setup).' : ((!v && a.key==="playwright_baseline") ? ' Expected: this crawler obeys robots.txt.' : '');
+      return '<span class="'+(v?'on':'')+'" style="--c:'+COLORS[a.group]+';--o:'+o.toFixed(2)+'" data-tone="'+ctone+'" data-tip="'+esc('Chain page '+(i+1)+': '+ct+extra)+'"></span>';
+    }).join("");
+    h+='<div><div class="rowhead tipable" tabindex="0"'+tipAttrs(m)+'><span>'+a.label+'</span><span class="val"><span class="chip '+m[0]+'">'+CHIP[m[0]]+'</span>'+c[0]+'/'+ch.n+' entered</span></div><div class="strip" role="img" aria-label="'+a.label+': runs reaching each of the 14 chain pages: '+c.join(", ")+' of '+ch.n+'">'+cells+'</div><div class="note">'+notes[a.key]+'</div></div>';
+  });
+  h+='</div><p class="note" style="margin-bottom:0">Hover or tap a row or a cell for what it means. Page numbers run 1 to 14 across the top.</p>';
+  box.innerHTML=h;
+})();
+
+/* ---------- time to detection ---------- */
+(function(){
+  var t=document.getElementById("ttd");
+  var h='<thead><tr><th>Agent</th><th class="n">Semantic</th><th class="n">Prompt injection</th><th class="n">Link graph</th></tr></thead><tbody>';
+  D.agents.forEach(function(a){
+    h+='<tr><td>'+a.label+'</td>'+["semantic","prompt_injection","link_graph"].map(function(cn){
+      var x=a.cond[cn], m=ttdMeaning(a,cn,x);
+      return '<td class="n tipable" tabindex="0"'+tipAttrs(m)+'>'+(x.k? statTxt(x.sec)+' s<br><span class="note">'+x.k+'/'+x.n+' runs with a hit</span>' : '<span class="note">no hit ('+x.k+'/'+x.n+')</span>')+'</td>';
+    }).join("")+'</tr>';
+  });
+  t.innerHTML=h+'</tbody>';
+})();
+
+/* ---------- comparisons ---------- */
+(function(){
+  var t=document.getElementById("cmp");
+  var h='<thead><tr><th>#</th><th>Groups compared</th><th class="n">p</th><th class="n">p (Bonferroni &times; 8)</th><th>Reading</th></tr></thead><tbody>';
+  D.comps.forEach(function(c,i){
+    var m=cmpMeaning(c), same=(c.p>0.05);
+    h+='<tr><td>'+(i+1)+'</td><td><div><b>'+c.g1+'</b>: '+c.a[0]+' of '+c.a[1]+' runs hit a trap</div><div class="vs">versus</div><div><b>'+c.g2+'</b>: '+c.b[0]+' of '+c.b[1]+' runs hit a trap</div><div class="note">Runs compared: '+c.scope+'</div></td>'+
+      '<td class="n tipable" tabindex="0"'+tipAttrs(m)+'>'+sci(c.p)+'</td><td class="n tipable" tabindex="0"'+tipAttrs(m)+'>'+sci(c.pb)+'</td>'+
+      '<td><span class="chip '+m[0]+'">'+(same?'No difference':'Clear difference')+'</span></td></tr>';
+  });
+  t.innerHTML=h+'</tbody>';
+})();
+</script>
+</body>
+</html>
