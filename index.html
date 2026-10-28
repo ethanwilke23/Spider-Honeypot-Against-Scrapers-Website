@@ -334,7 +334,7 @@ window.addEventListener("scroll",hideTip,{passive:true});
   var hb=document.getElementById("heroBtns"), dg=document.getElementById("dlGrid");
   function mk(href,label,alt){ return '<a class="btn'+(alt?' alt':'')+'" href="'+href+'">'+label+'</a>'; }
   var hero=mk(CONFIG.report,"Download the report (PDF)")+mk(CONFIG.poster,"Download the poster (PDF)",true);
-  if(CONFIG.repo) hero+=mk(CONFIG.repo,"View the code on GitHub",true);
+  if(CONFIG.repo) hero+=mk(CONFIG.repo,"View the code on GitHub",false);
   hb.innerHTML=hero;
   var cards='<div class="card"><h3 style="margin-top:0">Report</h3><p>The full report: method, results, discussion and references.</p>'+mk(CONFIG.report,"Download PDF")+'</div>'+
             '<div class="card"><h3 style="margin-top:0">Poster</h3><p>The A1 research poster, as submitted.</p>'+mk(CONFIG.poster,"Download PDF")+'</div>';
