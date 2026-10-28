@@ -160,7 +160,7 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:.88rem;border-top:1px so
   <h2>Time to detection</h2>
   <p>Median seconds from the first request in a run to the first trap hit. Range in brackets. Only runs with a hit are included.</p>
   <div class="card scroll"><table id="ttd"></table></div>
-  <p class="note">Playwright is a scripted crawler and is fast by design. The language-model agents take tens of seconds because the model reasons between requests. Timings depend on the machine used and are comparisons within this testbed, not general speeds.</p>
+  <p class="note">Playwright is a scripted crawler and is fast by design. The language-model agents take longer because the model processes each page (Crawl4AI) or decides each step (Claude). The extra second for the crawler that obeys <code>robots.txt</code> is its separate <code>robots.txt</code> request before the browser starts; measured from its own first page request, both crawlers take about 0.5 s. Timings depend on the machine used and are comparisons within this testbed, not general speeds.</p>
 </section>
 
 <section id="stats">
@@ -294,8 +294,10 @@ function ttdMeaning(a, cond, x){
   }
   var t="Median time to the first trap hit, with the fastest and slowest run in brackets. A shorter time means earlier detection.";
   if(a.group==="mech") t+=" This scripted crawler is fast by design.";
+  if(a.key==="playwright_baseline") t+=" The extra second compared with the other crawler is its separate robots.txt request before the browser starts; from its own first page request it also takes about 0.5 s.";
   if(a.group==="human") t="One false alarm, 47 seconds into the run. Rare, and not a measure of how fast honeypots catch agents.";
-  if(a.group==="crawl"||a.group==="claude") t+=" The model reasons between requests, so runs take tens of seconds.";
+  if(a.group==="crawl") t+=" The local model processes each page that the crawler fetches, so runs take tens of seconds. The model does not choose which pages are fetched.";
+  if(a.group==="claude") t+=" The model decides each step, so runs take longer than a scripted crawler.";
   return ["neutral",t];
 }
 function cmpMeaning(c){
